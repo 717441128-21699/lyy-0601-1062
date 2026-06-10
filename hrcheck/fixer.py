@@ -550,6 +550,7 @@ def apply_fixes(
                 }
 
     rows_to_delete = set()
+    delete_suggestion_info: Dict[int, Dict] = {}
     fields_to_update: Dict[Tuple, Dict] = {}
 
     for idx, s in enumerate(suggestions, 1):
@@ -560,16 +561,15 @@ def apply_fixes(
         manual_val = conf.get("manual_value")
 
         if s.allow_delete and do_delete and s.row_index:
-            rows_to_delete.add(int(s.row_index))
+            rid = int(s.row_index)
+            rows_to_delete.add(rid)
             old_val = s.issue.actual_value if s.issue else ""
-            fix_records.append({
-                "序号": seq_no, "工号": s.emp_id or "", "行号": s.row_index or "",
-                "字段": "整行", "原值": old_val or "", "新值": "[已删除]",
-                "修复方式": "删除重复行", "确认方式": "人工确认删除",
-                "处理时间": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            })
-            stats["applied"] += 1
-            deleted_rows.append(int(s.row_index))
+            delete_suggestion_info[rid] = {
+                "seq_no": seq_no,
+                "emp_id": s.emp_id or "",
+                "row_index": s.row_index or "",
+                "old_val": old_val or "",
+            }
             continue
 
         should_apply = False
@@ -641,11 +641,36 @@ def apply_fixes(
         else:
             stats["skipped"] += 1
 
+    actual_deleted_rows = []
     if rows_to_delete and "row_id" in fixed_df.columns:
         before = len(fixed_df)
-        fixed_df = fixed_df[~fixed_df["row_id"].isin(rows_to_delete)].reset_index(drop=True)
+        delete_mask = fixed_df["row_id"].isin(rows_to_delete)
+        deleted_df = fixed_df[delete_mask].copy()
+        fixed_df = fixed_df[~delete_mask].reset_index(drop=True)
         after = len(fixed_df)
-        stats["applied"] += (before - after)
+        actual_delete_count = before - after
+
+        for _, del_row in deleted_df.iterrows():
+            rid = int(del_row["row_id"])
+            info = delete_suggestion_info.get(rid, {
+                "seq_no": 0, "emp_id": del_row.get("emp_id", ""),
+                "row_index": str(rid), "old_val": ""
+            })
+            fix_records.append({
+                "序号": info.get("seq_no", 0),
+                "工号": info.get("emp_id", ""),
+                "行号": info.get("row_index", ""),
+                "字段": "整行",
+                "原值": info.get("old_val", ""),
+                "新值": "[已删除]",
+                "修复方式": "删除重复行",
+                "确认方式": "人工确认删除",
+                "处理时间": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+            actual_deleted_rows.append(rid)
+
+        stats["applied"] += actual_delete_count
+        deleted_rows = actual_deleted_rows
 
     fix_records_df = _build_fix_records_df(fix_records)
 

@@ -649,7 +649,7 @@ def fix_cmd(file_path, sheet_name, output, rules_file, apply_file, fixed_output,
             stats_table.add_row("需人工确认/未采纳", Text(str(result.needs_manual_count), style="yellow"))
             stats_table.add_row("跳过", Text(str(result.skipped_count), style="dim"))
             if not no_recheck:
-                stats_table.add_row("──────", "──", "")
+                stats_table.add_row("──────", "──")
                 stats_table.add_row("复检问题数", Text(str(len(result.recheck_issues)),
                     style="red" if len(result.recheck_issues) > 0 else "green"))
             console.print(stats_table)

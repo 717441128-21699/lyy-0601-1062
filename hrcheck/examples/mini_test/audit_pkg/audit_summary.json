@@ -1,0 +1,119 @@
+{
+  "audit_package_version": "1.1",
+  "generated_at": "2026-06-11T01:06:00",
+  "rules_config": {
+    "source": "default",
+    "required_fields_count": 7,
+    "valid_departments_count": 20,
+    "valid_employment_types_count": 7
+  },
+  "current_roster": {
+    "file": "hrcheck/examples/mini_test/本月花名册.xlsx",
+    "total_records": 9,
+    "active_records": 7,
+    "resigned_records": 2
+  },
+  "issues": {
+    "total": 14,
+    "by_level": {
+      "CRITICAL": 2,
+      "ERROR": 12
+    },
+    "by_code": {
+      "DUPLICATE_EMP_ID": 2,
+      "EMPTY_FIELD": 8,
+      "INVALID_DATE": 1,
+      "DEPARTMENT_NOT_FOUND": 1,
+      "INVALID_EMPLOYMENT_TYPE": 1,
+      "EMPLOYMENT_STATUS_CONFLICT": 1
+    }
+  },
+  "clean_roster_records": 1,
+  "fix_suggestions": {
+    "total": 14,
+    "by_confidence": {
+      "high": 2,
+      "medium": 3,
+      "low": 9
+    },
+    "requires_manual_confirmation": 12
+  },
+  "last_month_roster": {
+    "file": "hrcheck/examples/mini_test/上月花名册.xlsx",
+    "total_records": 7
+  },
+  "diffs": {
+    "total": 14,
+    "by_type": {
+      "新增": 2,
+      "离职": 2,
+      "调岗": 4,
+      "部门变更": 2,
+      "用工类型变更": 1,
+      "改名": 2,
+      "上级变更": 1
+    }
+  },
+  "department_summary": [
+    {
+      "department": "产品部",
+      "last_month_count": 1,
+      "current_count": 2,
+      "new_count": 0,
+      "resign_count": 0,
+      "transfer_in": 1,
+      "transfer_out": 0,
+      "net_change": 1
+    },
+    {
+      "department": "人力资源部",
+      "last_month_count": 1,
+      "current_count": 1,
+      "new_count": 0,
+      "resign_count": 0,
+      "transfer_in": 0,
+      "transfer_out": 0,
+      "net_change": 0
+    },
+    {
+      "department": "市场部",
+      "last_month_count": 1,
+      "current_count": 0,
+      "new_count": 0,
+      "resign_count": 0,
+      "transfer_in": 0,
+      "transfer_out": 1,
+      "net_change": -1
+    },
+    {
+      "department": "技术部",
+      "last_month_count": 3,
+      "current_count": 2,
+      "new_count": 0,
+      "resign_count": 1,
+      "transfer_in": 0,
+      "transfer_out": 1,
+      "net_change": -1
+    },
+    {
+      "department": "运营部",
+      "last_month_count": 0,
+      "current_count": 1,
+      "new_count": 1,
+      "resign_count": 0,
+      "transfer_in": 0,
+      "transfer_out": 0,
+      "net_change": 1
+    },
+    {
+      "department": "销售部",
+      "last_month_count": 0,
+      "current_count": 1,
+      "new_count": 0,
+      "resign_count": 0,
+      "transfer_in": 1,
+      "transfer_out": 0,
+      "net_change": 1
+    }
+  ]
+}
