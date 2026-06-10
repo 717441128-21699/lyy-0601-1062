@@ -503,23 +503,6 @@ def apply_fixes(
     rules_config: Optional[RulesConfig] = None,
     do_recheck: bool = True
 ) -> FixApplicationResult:
-    """
-    应用修复建议，支持：
-    - 按确认表的"是否删除此行"删除重复工号行
-    - 按"人工修正值"修改工号、字段值
-    - 自动应用高置信度无需确认的建议
-    - 应用后执行复检并返回问题列表
-
-    Args:
-        df: 原始花名册 DataFrame
-        suggestions: 修复建议列表
-        confirmation_df: 人工确认表（HR 填写后返回的）
-        rules_config: 规则配置
-        do_recheck: 是否执行复检
-
-    Returns:
-        FixApplicationResult 结果对象
-    """
     config = rules_config if rules_config else DEFAULT_CONFIG
     fixed_df = df.copy()
 
@@ -527,7 +510,6 @@ def apply_fixes(
     deleted_rows: List[int] = []
     modified_fields: List[Dict] = []
     fix_records: List[Dict] = []
-    seq_no = 0
 
     confirm_map = {}
     if confirmation_df is not None and not confirmation_df.empty:
@@ -551,25 +533,31 @@ def apply_fixes(
 
     rows_to_delete = set()
     delete_suggestion_info: Dict[int, Dict] = {}
-    fields_to_update: Dict[Tuple, Dict] = {}
 
     for idx, s in enumerate(suggestions, 1):
-        seq_no += 1
+        conf = confirm_map.get(idx, {})
+        do_delete = conf.get("do_delete", False)
+        if s.allow_delete and do_delete and s.row_index:
+            rid = int(s.row_index)
+            rows_to_delete.add(rid)
+            old_val = s.issue.actual_value if s.issue else ""
+            delete_suggestion_info[rid] = {
+                "seq_no": idx,
+                "emp_id": s.emp_id or "",
+                "row_index": s.row_index or "",
+                "old_val": old_val or "",
+            }
+
+    for idx, s in enumerate(suggestions, 1):
         conf = confirm_map.get(idx, {})
         do_delete = conf.get("do_delete", False)
         adopted = conf.get("adopted", False)
         manual_val = conf.get("manual_value")
 
         if s.allow_delete and do_delete and s.row_index:
-            rid = int(s.row_index)
-            rows_to_delete.add(rid)
-            old_val = s.issue.actual_value if s.issue else ""
-            delete_suggestion_info[rid] = {
-                "seq_no": seq_no,
-                "emp_id": s.emp_id or "",
-                "row_index": s.row_index or "",
-                "old_val": old_val or "",
-            }
+            continue
+
+        if s.row_index and int(s.row_index) in rows_to_delete:
             continue
 
         should_apply = False
@@ -601,7 +589,7 @@ def apply_fixes(
             if manual_val == "保留" or (adopted and s.suggested_value is None and manual_val is None):
                 stats["applied"] += 1
                 fix_records.append({
-                    "序号": seq_no, "工号": s.emp_id or "", "行号": s.row_index or "",
+                    "序号": idx, "工号": s.emp_id or "", "行号": s.row_index or "",
                     "字段": config.get_field_cn(s.field_name) if s.field_name else "",
                     "原值": s.issue.actual_value or "", "新值": "[保留不变]",
                     "修复方式": "确认保留未来日期", "确认方式": "人工确认",
@@ -625,7 +613,7 @@ def apply_fixes(
                         "field": s.field_name, "old": old_val, "new": value_to_use
                     })
                     fix_records.append({
-                        "序号": seq_no, "工号": s.emp_id or "", "行号": s.row_index or "",
+                        "序号": idx, "工号": s.emp_id or "", "行号": s.row_index or "",
                         "字段": config.get_field_cn(s.field_name),
                         "原值": old_val if not _is_empty(old_val) else "[空]",
                         "新值": value_to_use,
@@ -643,12 +631,9 @@ def apply_fixes(
 
     actual_deleted_rows = []
     if rows_to_delete and "row_id" in fixed_df.columns:
-        before = len(fixed_df)
         delete_mask = fixed_df["row_id"].isin(rows_to_delete)
         deleted_df = fixed_df[delete_mask].copy()
         fixed_df = fixed_df[~delete_mask].reset_index(drop=True)
-        after = len(fixed_df)
-        actual_delete_count = before - after
 
         for _, del_row in deleted_df.iterrows():
             rid = int(del_row["row_id"])
@@ -669,7 +654,7 @@ def apply_fixes(
             })
             actual_deleted_rows.append(rid)
 
-        stats["applied"] += actual_delete_count
+        stats["applied"] += len(actual_deleted_rows)
         deleted_rows = actual_deleted_rows
 
     fix_records_df = _build_fix_records_df(fix_records)
