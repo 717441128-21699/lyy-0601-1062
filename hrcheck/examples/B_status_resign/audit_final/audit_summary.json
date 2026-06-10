@@ -1,0 +1,77 @@
+{
+  "audit_package_version": "1.1",
+  "generated_at": "2026-06-11T01:33:20",
+  "rules_config": {
+    "source": "default",
+    "required_fields_count": 7,
+    "valid_departments_count": 20,
+    "valid_employment_types_count": 7
+  },
+  "current_roster": {
+    "file": "D:\\trae-bz\\TraeProjects\\1062\\hrcheck\\examples\\B_status_resign\\本月花名册.xlsx",
+    "total_records": 5,
+    "active_records": 4,
+    "resigned_records": 1
+  },
+  "issues": {
+    "total": 3,
+    "by_level": {
+      "ERROR": 3
+    },
+    "by_code": {
+      "EMPTY_FIELD": 3
+    }
+  },
+  "clean_roster_records": 2,
+  "fix_suggestions": {
+    "total": 3,
+    "by_confidence": {
+      "low": 3
+    },
+    "requires_manual_confirmation": 3
+  },
+  "last_month_roster": {
+    "file": "D:\\trae-bz\\TraeProjects\\1062\\hrcheck\\examples\\B_status_resign\\上月花名册.xlsx",
+    "total_records": 4
+  },
+  "diffs": {
+    "total": 3,
+    "by_type": {
+      "新增": 1,
+      "离职": 1,
+      "调岗": 1
+    }
+  },
+  "department_summary": [
+    {
+      "department": "产品部",
+      "last_month_count": 1,
+      "current_count": 1,
+      "new_count": 0,
+      "resign_count": 0,
+      "transfer_in": 0,
+      "transfer_out": 0,
+      "net_change": 0
+    },
+    {
+      "department": "技术部",
+      "last_month_count": 3,
+      "current_count": 2,
+      "new_count": 0,
+      "resign_count": 1,
+      "transfer_in": 0,
+      "transfer_out": 0,
+      "net_change": -1
+    },
+    {
+      "department": "运营部",
+      "last_month_count": 0,
+      "current_count": 1,
+      "new_count": 1,
+      "resign_count": 0,
+      "transfer_in": 0,
+      "transfer_out": 0,
+      "net_change": 1
+    }
+  ]
+}

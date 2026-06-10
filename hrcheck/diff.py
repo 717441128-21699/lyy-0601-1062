@@ -69,8 +69,17 @@ def compare_rosters(
     config = rules_config if rules_config else DEFAULT_CONFIG
     diffs: List[DiffRecord] = []
 
-    last_ids = set(last_month_df[~last_month_df["emp_id"].apply(_is_empty)]["emp_id"].tolist())
-    current_ids = set(current_df[~current_df["emp_id"].apply(_is_empty)]["emp_id"].tolist())
+    if len(last_month_df) == 0 or "emp_id" not in last_month_df.columns:
+        last_ids = set()
+    else:
+        last_mask = ~last_month_df["emp_id"].apply(_is_empty)
+        last_ids = set(last_month_df.loc[last_mask, "emp_id"].tolist())
+
+    if len(current_df) == 0 or "emp_id" not in current_df.columns:
+        current_ids = set()
+    else:
+        curr_mask = ~current_df["emp_id"].apply(_is_empty)
+        current_ids = set(current_df.loc[curr_mask, "emp_id"].tolist())
 
     new_ids = current_ids - last_ids
     resigned_ids = last_ids - current_ids

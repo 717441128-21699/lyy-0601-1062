@@ -1,0 +1,27 @@
+{
+  "audit_package_version": "1.1",
+  "generated_at": "2026-06-11T01:22:33",
+  "rules_config": {
+    "source": "default",
+    "required_fields_count": 7,
+    "valid_departments_count": 20,
+    "valid_employment_types_count": 7
+  },
+  "current_roster": {
+    "file": "hrcheck/examples/mini_test2/空花名册.xlsx",
+    "total_records": 0,
+    "active_records": 0,
+    "resigned_records": 0
+  },
+  "issues": {
+    "total": 0,
+    "by_level": {},
+    "by_code": {}
+  },
+  "clean_roster_records": 0,
+  "fix_suggestions": {
+    "total": 0,
+    "by_confidence": {},
+    "requires_manual_confirmation": 0
+  }
+}

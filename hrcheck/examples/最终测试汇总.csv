@@ -1,0 +1,4 @@
+﻿场景,import,check,diff,fix1,fix2,应用数,删除数,修改数,修复记录数,修复后条数,复检问题数,复检明细数,report,审计文件数,JSON
+A_空花名册,OK,OK,OK,OK,SKIP,,,,,,,,OK,8,OK
+B_状态变离职,OK,OK,OK,OK,SKIP,,,,,,,,OK,8,OK
+C_重复工号删除,OK,OK,OK,OK,OK,,,,,,,,OK,8,OK

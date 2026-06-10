@@ -2,7 +2,22 @@
 
 import os
 import sys
+import io
 import json
+
+if sys.platform.startswith("win"):
+    try:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        kernel32.SetConsoleOutputCP(65001)
+    except Exception:
+        pass
+
 from typing import Optional, List, Dict, Any
 from collections import Counter
 from datetime import datetime
@@ -38,7 +53,12 @@ from .fixer import (
     apply_fixes, FixApplicationResult,
 )
 
-console = Console()
+console = Console(force_terminal=False, highlight=False, emoji=False, markup=True)
+SYM_OK = "[OK]"
+SYM_WARN = "[WARN]"
+SYM_ERR = "[ERR]"
+SYM_CHECK = "[OK]"
+SYM_CROSS = "[X]"
 
 
 def _print_banner():
@@ -95,7 +115,7 @@ def _print_issues_table(issues: List[ValidationIssue], max_rows: int = 50,
                         config: RulesConfig = DEFAULT_CONFIG):
     """打印问题明细表格"""
     if not issues:
-        console.print("[green]✓ 未发现任何校验问题！[/green]")
+        console.print("[green][OK] 未发现任何校验问题！[/green]")
         return
 
     sorted_issues = sort_issues(issues)
@@ -284,10 +304,10 @@ def init_config_cmd(output):
     """
     try:
         generate_template_config(output)
-        console.print(f"[green]✓ 规则配置模板已生成: {output}[/green]")
+        console.print(f"[green][OK] 规则配置模板已生成: {output}[/green]")
         console.print("[blue]提示: 按公司实际情况修改 JSON 文件后，用各命令的 -r 参数指定[/blue]")
     except Exception as e:
-        console.print(f"[bold red]✗ 生成配置模板失败: {e}[/bold red]")
+        console.print(f"[bold red][X] 生成配置模板失败: {e}[/bold red]")
         sys.exit(1)
 
 
@@ -307,7 +327,7 @@ def import_cmd(file_path, sheet_name, output, fmt, rules_file, verbose):
     try:
         config = load_rules_config(rules_file)
         if rules_file:
-            console.print(f"[blue]→ 使用规则配置: {rules_file}[/blue]")
+            console.print(f"[blue]-> 使用规则配置: {rules_file}[/blue]")
 
         info = get_file_info(file_path)
         if verbose:
@@ -322,9 +342,9 @@ def import_cmd(file_path, sheet_name, output, fmt, rules_file, verbose):
             console.print(info_table)
 
         df = import_roster(file_path, sheet_name, rules_config=config)
-        console.print(f"[green]✓ 成功导入 {len(df)} 条记录[/green]")
+        console.print(f"[green][OK] 成功导入 {len(df)} 条记录[/green]")
         if len(df) == 0:
-            console.print("[yellow]⚠ 花名册为空，继续处理但输出空表[/yellow]")
+            console.print("[yellow][WARN] 花名册为空，继续处理但输出空表[/yellow]")
 
         if verbose:
             cols_table = Table(title="字段检测结果", show_header=True, header_style="bold magenta")
@@ -360,7 +380,7 @@ def import_cmd(file_path, sheet_name, output, fmt, rules_file, verbose):
                 export_to_excel(output, {"花名册": df}, rules_config=config)
             else:
                 export_to_csv(output, df, rules_config=config)
-            console.print(f"[green]✓ 已输出到: {output}[/green]")
+            console.print(f"[green][OK] 已输出到: {output}[/green]")
         else:
             base = os.path.splitext(file_path)[0]
             default_output = f"{base}_标准化.{fmt}"
@@ -368,10 +388,10 @@ def import_cmd(file_path, sheet_name, output, fmt, rules_file, verbose):
                 export_to_excel(default_output, {"花名册": df}, rules_config=config)
             else:
                 export_to_csv(default_output, df, rules_config=config)
-            console.print(f"[green]✓ 已输出到: {default_output}[/green]")
+            console.print(f"[green][OK] 已输出到: {default_output}[/green]")
 
     except Exception as e:
-        console.print(f"[bold red]✗ 导入失败: {e}[/bold red]")
+        console.print(f"[bold red][X] 导入失败: {e}[/bold red]")
         import traceback; traceback.print_exc()
         sys.exit(1)
 
@@ -394,21 +414,21 @@ def check_cmd(file_path, sheet_name, output, rules_file, dept_file, clean_output
     try:
         config = load_rules_config(rules_file)
         if rules_file:
-            console.print(f"[blue]→ 使用规则配置: {rules_file}[/blue]")
+            console.print(f"[blue]-> 使用规则配置: {rules_file}[/blue]")
 
         df = import_roster(file_path, sheet_name, rules_config=config)
-        console.print(f"[blue]→ 已导入 {len(df)} 条记录，开始校验...[/blue]")
+        console.print(f"[blue]-> 已导入 {len(df)} 条记录，开始校验...[/blue]")
         if len(df) == 0:
-            console.print("[yellow]⚠ 花名册为空，输出空报告[/yellow]")
+            console.print("[yellow][WARN] 花名册为空，输出空报告[/yellow]")
 
         valid_depts_override = None
         if dept_file:
             with open(dept_file, "r", encoding="utf-8") as f:
                 valid_depts_override = [line.strip() for line in f if line.strip()]
-            console.print(f"[blue]→ 载入自定义部门列表文件，共 {len(valid_depts_override)} 个部门[/blue]")
+            console.print(f"[blue]-> 载入自定义部门列表文件，共 {len(valid_depts_override)} 个部门[/blue]")
 
         issues = validate_roster(df, rules_config=config, valid_departments=valid_depts_override)
-        console.print(f"[blue]→ 校验完成，共发现 {len(issues)} 个问题[/blue]")
+        console.print(f"[blue]-> 校验完成，共发现 {len(issues)} 个问题[/blue]")
 
         _print_issues_summary(issues)
         _print_issues_table(issues, max_rows=max_display, config=config)
@@ -421,7 +441,7 @@ def check_cmd(file_path, sheet_name, output, rules_file, dept_file, clean_output
                 "问题统计": _create_summary_sheet(issues, config, df),
                 "问题明细": issues_df,
             }, rules_config=config)
-            console.print(f"[green]✓ 问题报告已输出到: {output}[/green]")
+            console.print(f"[green][OK] 问题报告已输出到: {output}[/green]")
         else:
             default_output = f"{base}_问题报告.xlsx"
             issues_df = issues_to_dataframe(issues, config)
@@ -429,25 +449,25 @@ def check_cmd(file_path, sheet_name, output, rules_file, dept_file, clean_output
                 "问题统计": _create_summary_sheet(issues, config, df),
                 "问题明细": issues_df,
             }, rules_config=config)
-            console.print(f"[green]✓ 问题报告已输出到: {default_output}[/green]")
+            console.print(f"[green][OK] 问题报告已输出到: {default_output}[/green]")
 
         if clean_output:
             clean_df = get_clean_roster(df, issues, config)
             export_to_excel(clean_output, {"花名册": clean_df}, rules_config=config)
-            console.print(f"[green]✓ 干净数据已输出到: {clean_output} (共 {len(clean_df)} 条)[/green]")
+            console.print(f"[green][OK] 干净数据已输出到: {clean_output} (共 {len(clean_df)} 条)[/green]")
         else:
             default_clean = f"{base}_干净版.xlsx"
             clean_df = get_clean_roster(df, issues, config)
             export_to_excel(default_clean, {"花名册": clean_df}, rules_config=config)
-            console.print(f"[green]✓ 干净数据已输出到: {default_clean} (共 {len(clean_df)} 条)[/green]")
+            console.print(f"[green][OK] 干净数据已输出到: {default_clean} (共 {len(clean_df)} 条)[/green]")
 
         critical = sum(1 for i in issues if i.error_level == ErrorLevel.CRITICAL)
         errors = sum(1 for i in issues if i.error_level == ErrorLevel.ERROR)
         if critical > 0 or errors > 0:
-            console.print(f"[yellow]⚠ 共 {critical} 个严重 + {errors} 个错误，请优先修复[/yellow]")
+            console.print(f"[yellow][WARN] 共 {critical} 个严重 + {errors} 个错误，请优先修复[/yellow]")
 
     except Exception as e:
-        console.print(f"[bold red]✗ 校验失败: {e}[/bold red]")
+        console.print(f"[bold red][X] 校验失败: {e}[/bold red]")
         import traceback; traceback.print_exc()
         sys.exit(1)
 
@@ -469,16 +489,16 @@ def diff_cmd(last_month_file, current_file, last_sheet, current_sheet, output, r
     try:
         config = load_rules_config(rules_file)
         if rules_file:
-            console.print(f"[blue]→ 使用规则配置: {rules_file}[/blue]")
+            console.print(f"[blue]-> 使用规则配置: {rules_file}[/blue]")
 
         last_df = import_roster(last_month_file, last_sheet, rules_config=config)
         curr_df = import_roster(current_file, current_sheet, rules_config=config)
-        console.print(f"[blue]→ 上月: {len(last_df)} 条 | 本月: {len(curr_df)} 条[/blue]")
+        console.print(f"[blue]-> 上月: {len(last_df)} 条 | 本月: {len(curr_df)} 条[/blue]")
         if len(last_df) == 0 and len(curr_df) == 0:
-            console.print("[yellow]⚠ 两个月花名册都为空，输出空报告[/yellow]")
+            console.print("[yellow][WARN] 两个月花名册都为空，输出空报告[/yellow]")
 
         diffs = compare_rosters(last_df, curr_df, rules_config=config)
-        console.print(f"[blue]→ 差异分析完成，共 {len(diffs)} 条变更[/blue]")
+        console.print(f"[blue]-> 差异分析完成，共 {len(diffs)} 条变更[/blue]")
 
         change_counter = Counter()
         for d in diffs:
@@ -571,7 +591,7 @@ def diff_cmd(last_month_file, current_file, last_sheet, current_sheet, output, r
                 "变更明细": diffs_df,
                 "部门汇总": dept_df,
             }, rules_config=config)
-            console.print(f"[green]✓ 差异报告已输出到: {output}[/green]")
+            console.print(f"[green][OK] 差异报告已输出到: {output}[/green]")
         else:
             base = os.path.splitext(current_file)[0]
             default_output = f"{base}_差异报告.xlsx"
@@ -583,10 +603,10 @@ def diff_cmd(last_month_file, current_file, last_sheet, current_sheet, output, r
                 "变更明细": diffs_df,
                 "部门汇总": dept_df,
             }, rules_config=config)
-            console.print(f"[green]✓ 差异报告已输出到: {default_output}[/green]")
+            console.print(f"[green][OK] 差异报告已输出到: {default_output}[/green]")
 
     except Exception as e:
-        console.print(f"[bold red]✗ 差异对比失败: {e}[/bold red]")
+        console.print(f"[bold red][X] 差异对比失败: {e}[/bold red]")
         import traceback; traceback.print_exc()
         sys.exit(1)
 
@@ -616,20 +636,20 @@ def fix_cmd(file_path, sheet_name, output, rules_file, apply_file, fixed_output,
     try:
         config = load_rules_config(rules_file)
         if rules_file:
-            console.print(f"[blue]→ 使用规则配置: {rules_file}[/blue]")
+            console.print(f"[blue]-> 使用规则配置: {rules_file}[/blue]")
 
         df = import_roster(file_path, sheet_name, rules_config=config)
-        console.print(f"[blue]→ 已导入 {len(df)} 条记录[/blue]")
+        console.print(f"[blue]-> 已导入 {len(df)} 条记录[/blue]")
         if len(df) == 0:
-            console.print("[yellow]⚠ 花名册为空，输出空建议表[/yellow]")
+            console.print("[yellow][WARN] 花名册为空，输出空建议表[/yellow]")
 
         if apply_file:
-            console.print(f"[blue]→ 载入已确认的修复建议: {apply_file}[/blue]")
+            console.print(f"[blue]-> 载入已确认的修复建议: {apply_file}[/blue]")
             confirm_df = _safe_read_excel_sheet(apply_file, "修复建议",
                 ["序号", "是否采纳", "是否删除此行", "人工修正值"])
             if confirm_df.empty:
                 raise ValueError("修复建议表中没有'修复建议'工作表，请检查文件")
-            console.print(f"[blue]→ 共读取 {len(confirm_df)} 行确认记录[/blue]")
+            console.print(f"[blue]-> 共读取 {len(confirm_df)} 行确认记录[/blue]")
 
             issues = validate_roster(df, rules_config=config)
             suggestions = generate_fix_suggestions(df, issues, rules_config=config)
@@ -683,7 +703,7 @@ def fix_cmd(file_path, sheet_name, output, rules_file, apply_file, fixed_output,
 
             fixed_path = fixed_output if fixed_output else f"{base}_已修复.xlsx"
             export_to_excel(fixed_path, {"花名册": result.fixed_df}, rules_config=config)
-            console.print(f"[green]✓ 修复后的花名册已输出: {fixed_path} ({len(result.fixed_df)} 条)[/green]")
+            console.print(f"[green][OK] 修复后的花名册已输出: {fixed_path} ({len(result.fixed_df)} 条)[/green]")
 
             report_path = report_output if report_output else f"{base}_修复报告.xlsx"
             sheets = {
@@ -702,19 +722,19 @@ def fix_cmd(file_path, sheet_name, output, rules_file, apply_file, fixed_output,
             if not no_recheck:
                 sheets["复检问题明细"] = issues_to_dataframe(result.recheck_issues, config)
             export_to_excel(report_path, sheets, rules_config=config)
-            console.print(f"[green]✓ 完整修复+复检报告已输出: {report_path}[/green]")
+            console.print(f"[green][OK] 完整修复+复检报告已输出: {report_path}[/green]")
 
             if len(result.recheck_issues) > 0 and not no_recheck:
-                console.print("[yellow]⚠ 修复后仍有问题，请检查「复检问题明细」工作表并决定是否继续处理[/yellow]")
+                console.print("[yellow][WARN] 修复后仍有问题，请检查「复检问题明细」工作表并决定是否继续处理[/yellow]")
             return
 
         issues = validate_roster(df, rules_config=config)
-        console.print(f"[blue]→ 发现 {len(issues)} 个问题，正在生成修复建议...[/blue]")
+        console.print(f"[blue]-> 发现 {len(issues)} 个问题，正在生成修复建议...[/blue]")
 
         suggestions = generate_fix_suggestions(df, issues, rules_config=config)
         if confidence:
             suggestions = [s for s in suggestions if s.confidence == confidence]
-        console.print(f"[blue]→ 已生成 {len(suggestions)} 条修复建议[/blue]")
+        console.print(f"[blue]-> 已生成 {len(suggestions)} 条修复建议[/blue]")
 
         conf_counter = Counter()
         type_counter = Counter()
@@ -761,7 +781,7 @@ def fix_cmd(file_path, sheet_name, output, rules_file, apply_file, fixed_output,
                     s.emp_id if s.emp_id else "",
                     field_cn,
                     Text(conf_names.get(s.confidence, s.confidence), style=conf_styles.get(s.confidence, "white")),
-                    Text("✓", style="red") if s.allow_delete else "",
+                    Text("[OK]", style="red") if s.allow_delete else "",
                     str(s.suggested_value) if s.suggested_value is not None else "需人工",
                     s.description,
                 )
@@ -773,7 +793,7 @@ def fix_cmd(file_path, sheet_name, output, rules_file, apply_file, fixed_output,
                 "修复建议": suggestions_df,
                 "问题明细": issues_to_dataframe(issues, config),
             }, rules_config=config)
-            console.print(f"[green]✓ 修复建议已输出到: {output}[/green]")
+            console.print(f"[green][OK] 修复建议已输出到: {output}[/green]")
         else:
             base = os.path.splitext(file_path)[0]
             default_output = f"{base}_修复建议.xlsx"
@@ -781,17 +801,17 @@ def fix_cmd(file_path, sheet_name, output, rules_file, apply_file, fixed_output,
                 "修复建议": suggestions_df,
                 "问题明细": issues_to_dataframe(issues, config),
             }, rules_config=config)
-            console.print(f"[green]✓ 修复建议已输出到: {default_output}[/green]")
+            console.print(f"[green][OK] 修复建议已输出到: {default_output}[/green]")
 
         console.print()
         console.print(Panel(
             "[bold yellow]HR 操作流程:[/bold yellow]\n"
-            "  1️⃣  打开修复建议 Excel → [修复建议] 工作表\n"
-            "  2️⃣  [bold]重复工号[/bold]: 在「是否删除此行」填 [red]是[/red] 删除多余行\n"
+            "  1.  打开修复建议 Excel -> [修复建议] 工作表\n"
+            "  2.  [bold]重复工号[/bold]: 在「是否删除此行」填 [red]是[/red] 删除多余行\n"
             "     或在「人工修正值」填新工号（并「是否采纳」填是）\n"
-            "  3️⃣  [bold]其他问题[/bold]: 同意建议就在「是否采纳」填是\n"
+            "  3.  [bold]其他问题[/bold]: 同意建议就在「是否采纳」填是\n"
             "     建议值不对就在「人工修正值」填正确值再勾选采纳\n"
-            "  4️⃣  保存文件后运行:\n"
+            "  4.  保存文件后运行:\n"
             "     [bold cyan]hrcheck fix <花名册.xlsx> -a <已确认的建议.xlsx>[/bold cyan]\n"
             "  📌 系统将自动输出: [green]已修复花名册 + 修复记录 + 复检结果[/green]",
             title="📋 使用说明",
@@ -799,7 +819,7 @@ def fix_cmd(file_path, sheet_name, output, rules_file, apply_file, fixed_output,
         ))
 
     except Exception as e:
-        console.print(f"[bold red]✗ 修复流程失败: {e}[/bold red]")
+        console.print(f"[bold red][X] 修复流程失败: {e}[/bold red]")
         import traceback; traceback.print_exc()
         sys.exit(1)
 
@@ -837,21 +857,21 @@ def report_cmd(current_file, last_file, current_sheet, last_sheet, output,
     try:
         config = load_rules_config(rules_file)
         if rules_file:
-            console.print(f"[blue]→ 使用规则配置: {rules_file}[/blue]")
+            console.print(f"[blue]-> 使用规则配置: {rules_file}[/blue]")
 
         curr_df = import_roster(current_file, current_sheet, rules_config=config)
-        console.print(f"[blue]→ 本月数据: {len(curr_df)} 条[/blue]")
+        console.print(f"[blue]-> 本月数据: {len(curr_df)} 条[/blue]")
         if len(curr_df) == 0:
-            console.print("[yellow]⚠ 本月花名册为空，继续处理并输出空表[/yellow]")
+            console.print("[yellow][WARN] 本月花名册为空，继续处理并输出空表[/yellow]")
 
         valid_depts_override = None
         if dept_file:
             with open(dept_file, "r", encoding="utf-8") as f:
                 valid_depts_override = [line.strip() for line in f if line.strip()]
-            console.print(f"[blue]→ 载入自定义部门列表: {len(valid_depts_override)} 个[/blue]")
+            console.print(f"[blue]-> 载入自定义部门列表: {len(valid_depts_override)} 个[/blue]")
 
         issues = validate_roster(curr_df, rules_config=config, valid_departments=valid_depts_override)
-        console.print(f"[blue]→ 校验完成: {len(issues)} 个问题[/blue]")
+        console.print(f"[blue]-> 校验完成: {len(issues)} 个问题[/blue]")
 
         suggestions = generate_fix_suggestions(curr_df, issues, rules_config=config)
         clean_df = get_clean_roster(curr_df, issues, config)
@@ -868,9 +888,9 @@ def report_cmd(current_file, last_file, current_sheet, last_sheet, output,
         summaries = []
         if last_file:
             last_df = import_roster(last_file, last_sheet, rules_config=config)
-            console.print(f"[blue]→ 上月数据: {len(last_df)} 条[/blue]")
+            console.print(f"[blue]-> 上月数据: {len(last_df)} 条[/blue]")
             diffs = compare_rosters(last_df, curr_df, rules_config=config)
-            console.print(f"[blue]→ 差异分析: {len(diffs)} 条变更[/blue]")
+            console.print(f"[blue]-> 差异分析: {len(diffs)} 条变更[/blue]")
             summaries = get_department_summary(last_df, curr_df, diffs, rules_config=config)
 
             change_counter = Counter(d.change_type for d in diffs)
@@ -887,9 +907,9 @@ def report_cmd(current_file, last_file, current_sheet, last_sheet, output,
         overview_panel_lines = [
             f"[bold cyan]综合报告工作表:[/bold cyan]",
             f"  📊 数据概览: {len(curr_df)} 条",
-            f"  ❌ 问题明细: {len(issues)} 个问题",
+            f"  [ERR] 问题明细: {len(issues)} 个问题",
             f"  🔧 修复建议: {len(suggestions)} 条",
-            f"  ✅ 干净数据: {len(clean_df)} 条无错记录",
+            f"  [OK] 干净数据: {len(clean_df)} 条无错记录",
         ]
         if last_file:
             overview_panel_lines += [
@@ -898,7 +918,7 @@ def report_cmd(current_file, last_file, current_sheet, last_sheet, output,
             ]
         overview_panel = Panel("\n".join(overview_panel_lines), title="综合报告生成完成", border_style="green")
         console.print(overview_panel)
-        console.print(f"[green]✓ 综合报告已输出: {output_path}[/green]")
+        console.print(f"[green][OK] 综合报告已输出: {output_path}[/green]")
 
         if audit_dir:
             console.print()
@@ -1030,10 +1050,10 @@ def report_cmd(current_file, last_file, current_sheet, last_sheet, output,
         critical = sum(1 for i in issues if i.error_level == ErrorLevel.CRITICAL)
         errors = sum(1 for i in issues if i.error_level == ErrorLevel.ERROR)
         if critical > 0 or errors > 0:
-            console.print(f"[yellow]⚠ 存在 {critical} 个严重 + {errors} 个错误，建议用 fix 命令处理[/yellow]")
+            console.print(f"[yellow][WARN] 存在 {critical} 个严重 + {errors} 个错误，建议用 fix 命令处理[/yellow]")
 
     except Exception as e:
-        console.print(f"[bold red]✗ 生成报告失败: {e}[/bold red]")
+        console.print(f"[bold red][X] 生成报告失败: {e}[/bold red]")
         import traceback; traceback.print_exc()
         sys.exit(1)
 
