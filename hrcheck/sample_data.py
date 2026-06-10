@@ -140,6 +140,19 @@ def generate_test_data():
             last_month[i]["在职状态"] = "在职"
             last_month[i]["离职日期"] = ""
 
+    status_change_idx = 12
+    if status_change_idx < len(last_month) and last_month[status_change_idx]["在职状态"] != "离职":
+        last_month[status_change_idx]["在职状态"] = "在职"
+        last_month[status_change_idx]["离职日期"] = ""
+    if status_change_idx < len(current):
+        hire_dt = datetime.strptime(current[status_change_idx]["入职日期"], "%Y-%m-%d")
+        resign_dt = hire_dt + timedelta(days=365)
+        if resign_dt > datetime(2026, 6, 1):
+            resign_dt = datetime(2026, 5, 31)
+        current[status_change_idx]["在职状态"] = "离职"
+        current[status_change_idx]["离职日期"] = resign_dt.strftime("%Y-%m-%d")
+        print(f"  - 特殊测试: 工号 {current[status_change_idx]['工号']} ({current[status_change_idx]['姓名']}) 本月状态变更为离职(仍在花名册中)")
+
     current_df = inject_errors(current)
 
     last_df = pd.DataFrame(last_month)

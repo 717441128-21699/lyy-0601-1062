@@ -1,0 +1,119 @@
+{
+  "_comment": "HR 花名册校验规则配置模板 - 按需修改后使用 check/fix/report 的 -r 参数指定此文件",
+  "required_fields": [
+    "emp_id",
+    "name",
+    "department",
+    "position",
+    "hire_date",
+    "employment_type",
+    "supervisor_id"
+  ],
+  "_required_fields_comment": "必填字段列表，空值将报 ERROR",
+  "optional_fields": [
+    "status",
+    "resign_date",
+    "phone",
+    "email",
+    "id_card",
+    "gender",
+    "birthday",
+    "education"
+  ],
+  "_optional_fields_comment": "可选字段列表，不校验空值",
+  "valid_departments": [
+    "总经办",
+    "人力资源部",
+    "财务部",
+    "行政部",
+    "技术部",
+    "产品部",
+    "设计部",
+    "市场部",
+    "销售部",
+    "运营部",
+    "客户服务部",
+    "研发中心",
+    "测试部",
+    "质量管理部",
+    "采购部",
+    "仓储部",
+    "生产部",
+    "法务部",
+    "审计部",
+    "战略发展部"
+  ],
+  "_valid_departments_comment": "有效部门列表，不在此列表将报错",
+  "valid_employment_types": [
+    "正式",
+    "试用期",
+    "实习",
+    "外包",
+    "派遣",
+    "兼职",
+    "劳务"
+  ],
+  "_valid_employment_types_comment": "有效用工类型列表",
+  "valid_statuses": [
+    "在职",
+    "离职",
+    "停薪留职",
+    "退休"
+  ],
+  "_valid_statuses_comment": "有效在职状态列表",
+  "date_formats": [
+    "%Y-%m-%d",
+    "%Y/%m/%d",
+    "%Y年%m月%d日",
+    "%Y.%m.%d",
+    "%Y%m%d",
+    "%Y-%m",
+    "%Y/%m"
+  ],
+  "_date_formats_comment": "支持的日期格式列表（按顺序尝试解析）",
+  "error_levels": {
+    "DUPLICATE_EMP_ID": "CRITICAL",
+    "EMPTY_FIELD": "ERROR",
+    "INVALID_DATE": "ERROR",
+    "FUTURE_DATE": "WARNING",
+    "DEPARTMENT_NOT_FOUND": "ERROR",
+    "SUPERVISOR_CYCLE": "CRITICAL",
+    "SUPERVISOR_NOT_FOUND": "WARNING",
+    "EMPLOYMENT_STATUS_CONFLICT": "ERROR",
+    "INVALID_EMPLOYMENT_TYPE": "ERROR",
+    "INVALID_NAME_FORMAT": "WARNING"
+  },
+  "_error_levels_comment": "错误等级调整：CRITICAL/ERROR/WARNING/INFO，可降级或升级特定错误",
+  "field_cn_mapping": {
+    "emp_id": "工号",
+    "name": "姓名",
+    "department": "部门",
+    "position": "岗位",
+    "hire_date": "入职日期",
+    "employment_type": "用工类型",
+    "supervisor_id": "直属上级工号",
+    "status": "在职状态",
+    "resign_date": "离职日期",
+    "phone": "电话",
+    "email": "邮箱",
+    "id_card": "身份证号",
+    "gender": "性别",
+    "birthday": "生日",
+    "education": "学历"
+  },
+  "_field_cn_mapping_comment": "字段中英文映射，用于识别中文列名和导出报表",
+  "status_rules": {
+    "active_statuses": [
+      "在职"
+    ],
+    "resigned_statuses": [
+      "离职",
+      "退休"
+    ],
+    "require_resign_date_for_resigned": true,
+    "forbid_resign_date_for_active": true
+  },
+  "_status_rules_comment": "在职状态业务规则：哪些算在职/离职，离职日期的要求",
+  "custom": {},
+  "_custom_comment": "自定义扩展配置，可用于脚本扩展"
+}

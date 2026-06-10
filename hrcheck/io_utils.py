@@ -1,9 +1,10 @@
-"""数据导入导出模块：支持 CSV 和 Excel 格式"""
+"""数据导入导出模块：支持 CSV 和 Excel 格式，支持 RulesConfig"""
 
 import os
 import pandas as pd
 from typing import Optional, Dict, Any, Tuple
 from .config import ALL_FIELDS, REQUIRED_FIELDS, FIELD_CN_MAPPING, CN_FIELD_MAPPING
+from .rules_config import RulesConfig, DEFAULT_CONFIG
 
 
 def _detect_encoding(file_path: str) -> str:
@@ -19,21 +20,23 @@ def _detect_encoding(file_path: str) -> str:
     return "utf-8"
 
 
-def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+def _normalize_columns(df: pd.DataFrame, config: RulesConfig = DEFAULT_CONFIG) -> pd.DataFrame:
     """将中文列名转换为英文字段名"""
+    cn_mapping = config.cn_field_mapping
+    field_names = config.all_fields
     rename_map = {}
     for col in df.columns:
         col_stripped = str(col).strip()
-        if col_stripped in CN_FIELD_MAPPING:
-            rename_map[col] = CN_FIELD_MAPPING[col_stripped]
-        elif col_stripped in FIELD_CN_MAPPING:
+        if col_stripped in cn_mapping:
+            rename_map[col] = cn_mapping[col_stripped]
+        elif col_stripped in field_names:
             rename_map[col] = col_stripped
     return df.rename(columns=rename_map)
 
 
-def _add_missing_columns(df: pd.DataFrame) -> pd.DataFrame:
+def _add_missing_columns(df: pd.DataFrame, config: RulesConfig = DEFAULT_CONFIG) -> pd.DataFrame:
     """添加缺失的可选字段列"""
-    for field in ALL_FIELDS:
+    for field in config.all_fields:
         if field not in df.columns:
             df[field] = None
     return df
@@ -49,17 +52,24 @@ def _clean_string_fields(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def import_roster(file_path: str, sheet_name: Optional[str] = None) -> pd.DataFrame:
+def import_roster(
+    file_path: str,
+    sheet_name: Optional[str] = None,
+    rules_config: Optional[RulesConfig] = None
+) -> pd.DataFrame:
     """
     导入花名册文件
 
     Args:
         file_path: 文件路径，支持 .csv, .xlsx, .xls
         sheet_name: Excel 工作表名，仅对 Excel 文件有效
+        rules_config: 规则配置对象
 
     Returns:
         标准化后的 DataFrame
     """
+    config = rules_config if rules_config else DEFAULT_CONFIG
+
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"文件不存在: {file_path}")
 
@@ -73,8 +83,8 @@ def import_roster(file_path: str, sheet_name: Optional[str] = None) -> pd.DataFr
     else:
         raise ValueError(f"不支持的文件格式: {ext}，请使用 CSV 或 Excel 文件")
 
-    df = _normalize_columns(df)
-    df = _add_missing_columns(df)
+    df = _normalize_columns(df, config)
+    df = _add_missing_columns(df, config)
     df = _clean_string_fields(df)
 
     if "row_id" not in df.columns:
@@ -83,9 +93,21 @@ def import_roster(file_path: str, sheet_name: Optional[str] = None) -> pd.DataFr
     return df
 
 
+def _apply_column_rename(df: pd.DataFrame, config: RulesConfig = DEFAULT_CONFIG) -> pd.DataFrame:
+    """应用列名转换（英文 -> 中文）"""
+    df_display = df.copy()
+    rename_map = {}
+    cn_mapping = config.field_cn_mapping
+    for col in df_display.columns:
+        if col in cn_mapping:
+            rename_map[col] = cn_mapping[col]
+    return df_display.rename(columns=rename_map)
+
+
 def export_to_excel(
     output_path: str,
-    data_frames: Dict[str, pd.DataFrame]
+    data_frames: Dict[str, pd.DataFrame],
+    rules_config: Optional[RulesConfig] = None
 ) -> None:
     """
     导出数据到 Excel 文件（支持多工作表）
@@ -93,7 +115,10 @@ def export_to_excel(
     Args:
         output_path: 输出文件路径
         data_frames: 字典，key 为工作表名，value 为 DataFrame
+        rules_config: 规则配置（用于列名映射）
     """
+    config = rules_config if rules_config else DEFAULT_CONFIG
+
     output_dir = os.path.dirname(output_path)
     if output_dir and not os.path.exists(output_dir):
         os.makedirs(output_dir, exist_ok=True)
@@ -101,19 +126,15 @@ def export_to_excel(
     with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
         for sheet_name, df in data_frames.items():
             safe_sheet_name = sheet_name[:31]
-            df_display = df.copy()
-            rename_map = {}
-            for col in df_display.columns:
-                if col in FIELD_CN_MAPPING:
-                    rename_map[col] = FIELD_CN_MAPPING[col]
-            df_display = df_display.rename(columns=rename_map)
+            df_display = _apply_column_rename(df, config)
             df_display.to_excel(writer, sheet_name=safe_sheet_name, index=False)
 
 
 def export_to_csv(
     output_path: str,
     df: pd.DataFrame,
-    encoding: str = "utf-8-sig"
+    encoding: str = "utf-8-sig",
+    rules_config: Optional[RulesConfig] = None
 ) -> None:
     """
     导出数据到 CSV 文件
@@ -122,17 +143,15 @@ def export_to_csv(
         output_path: 输出文件路径
         df: 要导出的 DataFrame
         encoding: 文件编码，默认 utf-8-sig (Excel 友好)
+        rules_config: 规则配置（用于列名映射）
     """
+    config = rules_config if rules_config else DEFAULT_CONFIG
+
     output_dir = os.path.dirname(output_path)
     if output_dir and not os.path.exists(output_dir):
         os.makedirs(output_dir, exist_ok=True)
 
-    df_display = df.copy()
-    rename_map = {}
-    for col in df_display.columns:
-        if col in FIELD_CN_MAPPING:
-            rename_map[col] = FIELD_CN_MAPPING[col]
-    df_display = df_display.rename(columns=rename_map)
+    df_display = _apply_column_rename(df, config)
     df_display.to_csv(output_path, index=False, encoding=encoding)
 
 
